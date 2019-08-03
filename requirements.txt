@@ -1,1 +1,3 @@
+aiohttp
+async_timeout
 boto3
