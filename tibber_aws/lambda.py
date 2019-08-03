@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import numpy as np
 import os
 from urllib.parse import urlparse
 
@@ -20,15 +21,24 @@ LAMBDA_TIMEOUT = 120
 async def invoke(func_name, payload, aiohttp_session, retries=3):
     """Used to invoke lambda functions async."""
 
+    def convert(o):
+        if isinstance(o, np.int64):
+            _LOGGER.debug("Int63, %s %s", o, payload)
+            return int(0)
+        if isinstance(o, dict):
+            return {k: convert(v) for k, v in o.items()}
+        if isinstance(o, (list, tuple)):
+            return [convert(x) for x in o]
+        return o
+
     def create_signed_headers(_url, _payload):
         host_segments = urlparse(_url).netloc.split('.')
         service = host_segments[0]
         region = host_segments[1]
         try:
-            data = json.dumps(_payload)
+            data = json.dumps(convert(_payload))
         except TypeError:
-            _LOGGER.error("Failed to convert to json, %s, %s",
-                          _payload.get("deviceId", ""), _payload, exc_info=True)
+            _LOGGER.error("Failed to convert to json, %s", _payload, exc_info=True)
             raise
         request = AWSRequest(method='POST',
                              url=_url,
