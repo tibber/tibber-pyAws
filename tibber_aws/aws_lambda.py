@@ -54,7 +54,7 @@ async def invoke(func_name, payload, retries=3, timeout=LAMBDA_TIMEOUT):
         try:
             with async_timeout.timeout(timeout):
                 try:
-                    async with app.aiohttp_session.post(
+                    async with aiohttp_session.post(
                         url, data=data, headers=signed_headers
                     ) as response:
                         if response.status != 200:
