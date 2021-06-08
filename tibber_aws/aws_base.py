@@ -18,6 +18,7 @@ class AwsBase:
 
     async def close(self) -> None:
         await self._context_stack.aclose()
+        self._client = None
 
     async def _init_client_if_required(self, session=None) -> None:
         if self._client is not None:

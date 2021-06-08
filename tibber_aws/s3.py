@@ -36,54 +36,57 @@ class S3Bucket(AwsBase):
             if "PreconditionFailed" in str(exp):
                 return None, STATE_PRECONDITION_FAILED
             raise
+
         if len(key) > 3 and key[-3:] == ".gz":
-            content = zlib.decompressobj(zlib.MAX_WBITS | 16).decompress(res)
-            return content, STATE_OK
+            return zlib.decompressobj(zlib.MAX_WBITS | 16).decompress(res), STATE_OK
         return res.decode("utf-8"), STATE_OK
 
     async def store_data(self, key, data, retry=1):
         await self._init_client_if_required()
+
         if len(key) > 3 and key[-3:] == ".gz":
             compressor = zlib.compressobj(wbits=zlib.MAX_WBITS | 16)
             body = compressor.compress(data)
             body += compressor.flush()
         else:
             body = data
+
         try:
-            resp = await self._client.put_object(
+            return await self._client.put_object(
                 Bucket=self._bucket_name, Key=key, Body=body
             )
         except self._client.exceptions.NoSuchBucket:
-            if retry > 0:
-                await self._client.create_bucket(
-                    Bucket=self._bucket_name,
-                    CreateBucketConfiguration={"LocationConstraint": self._region_name},
-                )
-                return await self.store_data(key, data, retry - 1)
-            raise
-        return resp
+            if retry <= 0:
+                raise
+            await self._client.create_bucket(
+                Bucket=self._bucket_name,
+                CreateBucketConfiguration={"LocationConstraint": self._region_name},
+            )
+            return await self.store_data(key, data, retry - 1)
 
-    async def list_keys(self, prefix=''):
+    async def list_keys(self, prefix=""):
         """Lists ALL objects of the bucket in the given prefix.
-            Args:
-                :prefix (str, optional): a prefix of the bucket to list (Default: none)
-            Returns:
-                list: The list of objects::
-                    [
-                        {
-                            'Key': 'prefix/file.json',
-                            'LastModified': datetime.datetime(2018, 12, 13, 14, 15, 16, tzinfo=tzutc()),
-                            'ETag': '"58bcd9641b1176ea012b6377eb5ce050"'
-                            'Size': 262756,
-                            'StorageClass': 'STANDARD'
-                        }
-                    ]
+        Args:
+            :prefix (str, optional): a prefix of the bucket to list (Default: none)
+        Returns:
+            list: The list of objects::
+                [
+                    {
+                        'Key': 'prefix/file.json',
+                        'LastModified': datetime.datetime(2018, 12, 13, 14, 15, 16, tzinfo=tzutc()),
+                        'ETag': '"58bcd9641b1176ea012b6377eb5ce050"'
+                        'Size': 262756,
+                        'StorageClass': 'STANDARD'
+                    }
+                ]
         """
-        paginator = self._client.get_paginator('list_objects_v2')
+        paginator = self._client.get_paginator("list_objects_v2")
         objects = []
         try:
-            async for resp in paginator.paginate(Bucket=self._bucket_name, Prefix=prefix):
-                objects.extend(resp.get('Contents', []))
+            async for resp in paginator.paginate(
+                Bucket=self._bucket_name, Prefix=prefix
+            ):
+                objects.extend(resp.get("Contents", []))
         except self._client.exceptions.NoSuchBucket:
             return []
         return objects
