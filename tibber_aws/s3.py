@@ -80,6 +80,8 @@ class S3Bucket(AwsBase):
                     }
                 ]
         """
+        await self._init_client_if_required()
+
         paginator = self._client.get_paginator("list_objects_v2")
         objects = []
         try:
