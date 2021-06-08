@@ -60,4 +60,5 @@ class S3Bucket(AwsBase):
                     CreateBucketConfiguration={"LocationConstraint": self._region_name},
                 )
                 return await self.store_data(key, data, retry - 1)
+            raise
         return resp
