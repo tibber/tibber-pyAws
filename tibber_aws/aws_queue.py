@@ -4,18 +4,33 @@ import time
 
 import aiobotocore
 
+from .aws_base import AwsBase
+
 _LOGGER = logging.getLogger(__name__)
 
 
-class Queue:
-    def __init__(self, queue_name, region_name="eu-west-1"):
-        self._queue_name = queue_name
-        self._region_name = region_name
-        self._session = aiobotocore.get_session()
-        self._client = self._session.create_client("sqs", region_name=region_name)
-        self.queue_url = None
+class MessageHandle:
+    def __init__(self, msg):
+        self._msg = msg
 
-    async def subscribe_topic(self, topic_name):
+    @property
+    def body(self):
+        return self._msg["Body"]
+
+    @property
+    def receipt_handle(self):
+        return self._msg["ReceiptHandle"]
+
+
+class Queue(AwsBase):
+    def __init__(self, queue_name, region_name="eu-west-1") -> None:
+        self._queue_name = queue_name
+        self.queue_url = None
+        super().__init__("sqs", region_name)
+
+    async def subscribe_topic(self, topic_name) -> None:
+        session = aiobotocore.get_session()
+        await self._init_client_if_required(session)
 
         response = await self._client.create_queue(QueueName=self._queue_name)
         self.queue_url = response["QueueUrl"]
@@ -26,7 +41,6 @@ class Queue:
         queue_attributes = attr_response.get("Attributes")
         queue_arn = queue_attributes.get("QueueArn")
 
-        # Set up a policy to allow SNS access to the queue
         if "Policy" in queue_attributes:
             policy = json.loads(queue_attributes["Policy"])
         else:
@@ -53,7 +67,9 @@ class Queue:
         if not isinstance(source_arn, list):
             source_arn = [source_arn]
 
-        sns = self._session.create_client("sns", region_name=self._region_name)
+        sns = await self._context_stack.enter_async_context(
+            session.create_client("sns", region_name=self._region_name)
+        )
         response = await sns.create_topic(Name=topic_name)
         topic_arn = response["TopicArn"]
 
@@ -65,10 +81,12 @@ class Queue:
                 QueueUrl=self.queue_url, Attributes={"Policy": json.dumps(policy)}
             )
 
-        await sns.subscribe(TopicArn=topic_arn, Protocol="sqs", Endpoint=queue_arn)
+        await sns.subscribe(
+            TopicArn=topic_arn, Protocol=self._service_name, Endpoint=queue_arn
+        )
         await sns.close()
 
-    async def receive_message(self, num_msgs=1):
+    async def receive_message(self, num_msgs=1) -> [MessageHandle]:
         if self.queue_url is None:
             _LOGGER.error("No subscribed queue")
             return [None]
@@ -80,23 +98,7 @@ class Queue:
             res.append(MessageHandle(msg))
         return res
 
-    async def delete_message(self, msg_handle):
+    async def delete_message(self, msg_handle: MessageHandle) -> None:
         await self._client.delete_message(
             QueueUrl=self.queue_url, ReceiptHandle=msg_handle.receipt_handle
         )
-
-    async def close(self):
-        await self._client.close()
-
-
-class MessageHandle:
-    def __init__(self, msg):
-        self._msg = msg
-
-    @property
-    def body(self):
-        return self._msg["Body"]
-
-    @property
-    def receipt_handle(self):
-        return self._msg["ReceiptHandle"]

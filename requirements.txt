@@ -1,5 +1,1 @@
-aiohttp
-aiobotocore==0.12.0
-async_timeout
-boto3
-numpy
+.
