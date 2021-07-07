@@ -29,20 +29,21 @@ class S3Bucket(AwsBase):
                     IfUnmodifiedSince=if_unmodified_since,
                 )
             meta = raw['ResponseMetadata']
+            print(meta)
             res = await raw["Body"].read()
         except self._client.exceptions.NoSuchKey:
-            return None, STATE_NOT_EXISTING, None
+            return None, None, STATE_NOT_EXISTING
         except botocore.exceptions.ClientError as exp:
             if "PreconditionFailed" in str(exp):
-                return None, STATE_PRECONDITION_FAILED, None
+                return None, None, STATE_PRECONDITION_FAILED
             raise
 
         if len(key) > 3 and key[-3:] == ".gz":
-            return zlib.decompressobj(zlib.MAX_WBITS | 16).decompress(res), STATE_OK, meta
-        return res.decode("utf-8"), STATE_OK, meta
+            return zlib.decompressobj(zlib.MAX_WBITS | 16).decompress(res), meta, STATE_OK
+        return res.decode("utf-8"), meta, STATE_OK
 
     async def load_data(self, key, if_unmodified_since=None):
-        data, state, _ = await self.load_data_meta_data(key, if_unmodified_since)
+        data, state, _ = await self.load_data_metadata(key, if_unmodified_since)
         return data, state
 
     async def store_data(self, key, data, retry=1):
