@@ -29,7 +29,6 @@ class S3Bucket(AwsBase):
                     IfUnmodifiedSince=if_unmodified_since,
                 )
             meta = raw['ResponseMetadata']
-            print(meta)
             res = await raw["Body"].read()
         except self._client.exceptions.NoSuchKey:
             return None, None, STATE_NOT_EXISTING
