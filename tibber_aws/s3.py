@@ -18,28 +18,32 @@ class S3Bucket(AwsBase):
         self._bucket_name = bucket_name
         super().__init__("s3", region_name)
 
-    async def load_data(self, key, if_unmodified_since=None):
+    async def load_data_metadata(self, key, if_unmodified_since=None):
         await self._init_client_if_required()
         if if_unmodified_since is None:
             if_unmodified_since = datetime.datetime(1900, 1, 1)
         try:
-            res = await (
-                await self._client.get_object(
+            raw = await self._client.get_object(
                     Bucket=self._bucket_name,
                     Key=key,
                     IfUnmodifiedSince=if_unmodified_since,
                 )
-            )["Body"].read()
+            meta = raw['ResponseMetadata']
+            res = await raw["Body"].read()
         except self._client.exceptions.NoSuchKey:
-            return None, STATE_NOT_EXISTING
+            return None, STATE_NOT_EXISTING, None
         except botocore.exceptions.ClientError as exp:
             if "PreconditionFailed" in str(exp):
-                return None, STATE_PRECONDITION_FAILED
+                return None, STATE_PRECONDITION_FAILED, None
             raise
 
         if len(key) > 3 and key[-3:] == ".gz":
-            return zlib.decompressobj(zlib.MAX_WBITS | 16).decompress(res), STATE_OK
-        return res.decode("utf-8"), STATE_OK
+            return zlib.decompressobj(zlib.MAX_WBITS | 16).decompress(res), STATE_OK, meta
+        return res.decode("utf-8"), STATE_OK, meta
+
+    async def load_data(self, key, if_unmodified_since=None):
+        data, state, _ = await self.load_data_meta_data(key, if_unmodified_since)
+        return data, state
 
     async def store_data(self, key, data, retry=1):
         await self._init_client_if_required()
