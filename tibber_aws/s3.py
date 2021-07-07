@@ -42,7 +42,7 @@ class S3Bucket(AwsBase):
         return res.decode("utf-8"), meta, STATE_OK
 
     async def load_data(self, key, if_unmodified_since=None):
-        data, state, _ = await self.load_data_metadata(key, if_unmodified_since)
+        data, _, state = await self.load_data_metadata(key, if_unmodified_since)
         return data, state
 
     async def store_data(self, key, data, retry=1):
