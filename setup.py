@@ -3,7 +3,7 @@ import sys
 from setuptools import setup
 
 install_requires = [
-    "aiobotocore",
+    "aiobotocore==1.3.1",
     "aiohttp",
     "async_timeout",
     "boto3",
