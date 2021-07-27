@@ -8,7 +8,6 @@ install_requires = [
     "async_timeout",
     "boto3",
     "botocore",
-    "numpy",
 ]
 
 if sys.version_info < (3, 7):
