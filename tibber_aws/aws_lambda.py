@@ -17,7 +17,6 @@ LAMBDA_ENDPOINT_BASE = "https://lambda.eu-west-1.amazonaws.com/2015-03-31/functi
 LAMBDA_TIMEOUT = 120
 
 
-
 def create_signed_headers(url, payload):
     host_segments = urlparse(url).netloc.split(".")
     service = host_segments[0]
@@ -39,7 +38,7 @@ async def invoke(
 ):
     """Used to invoke lambda functions async."""
     url = os.path.join(LAMBDA_ENDPOINT_BASE, func_name, "invocations")
-    data = json.dumps(convert(payload))
+    data = json.dumps(payload)
     signed_headers = create_signed_headers(url, data)
 
     for retry in range(retries, 0, -1):
