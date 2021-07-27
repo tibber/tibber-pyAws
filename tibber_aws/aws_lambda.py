@@ -6,7 +6,6 @@ from urllib.parse import urlparse
 
 import aiohttp
 import async_timeout
-import numpy as np
 from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
 from botocore.session import Session
@@ -17,16 +16,6 @@ CREDS = Session().get_credentials()
 LAMBDA_ENDPOINT_BASE = "https://lambda.eu-west-1.amazonaws.com/2015-03-31/functions"
 LAMBDA_TIMEOUT = 120
 
-
-def convert(o):
-    if isinstance(o, np.int64):
-        _LOGGER.debug("Int64, %s", o)
-        return int(o)
-    if isinstance(o, dict):
-        return {k: convert(v) for k, v in o.items()}
-    if isinstance(o, (list, tuple)):
-        return [convert(x) for x in o]
-    return o
 
 
 def create_signed_headers(url, payload):
