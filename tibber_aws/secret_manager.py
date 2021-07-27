@@ -3,7 +3,7 @@ import json
 import logging
 
 import boto3
-from botocore.exceptions import ClientError, NoCredentialsError
+from botocore.exceptions import NoCredentialsError
 
 _LOGGER = logging.getLogger(__name__)
 
