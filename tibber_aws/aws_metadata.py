@@ -10,7 +10,7 @@ def get_instance_id():
         filename = os.environ.get("ECS_CONTAINER_METADATA_FILE")
         if filename is not None:
             _LOGGER.info("ECS_CONTAINER_METADATA_FILE %s", filename)
-            with open(filename, encoding="utf-8) as file:
+            with open(filename, encoding="utf-8") as file:
                 metadata = json.load(file)
             _LOGGER.info("metadata %s", metadata)
             _id = metadata.get("ContainerID")
