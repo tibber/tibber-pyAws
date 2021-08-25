@@ -21,4 +21,3 @@ def get_instance_id():
         _LOGGER.error("Failed to get instance id", exc_info=True)
         pass
     return os.uname()[1].replace(".", "").replace("-", "")
-  
