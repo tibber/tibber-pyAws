@@ -3,7 +3,7 @@ AWS related packages.
 Built using GitHub Actions and releases created from GitHub and pushed to pypi.
 
 ## Packages
-* `tibber_aws` - Communication with AWS
+* [tibber_aws](https://pypi.org/project/tibber-aws/)
 
 ## Create Release
 * Update version in setup.py
