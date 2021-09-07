@@ -3,11 +3,10 @@ import sys
 from setuptools import setup
 
 install_requires = [
-    "aiobotocore==1.3.1",
+    "aiobotocore",
     "aiohttp",
     "async_timeout",
-    "boto3",
-    "botocore",
+    "boto3"
 ]
 
 if sys.version_info < (3, 7):
@@ -17,7 +16,7 @@ setup(
     name="tibber_aws",
     packages=["tibber_aws"],
     install_requires=install_requires,
-    version="0.8.3",
+    version="0.8.4",
     description="A python3 library to communicate with Aws",
     python_requires=">=3.5.3",
     author="Tibber",
