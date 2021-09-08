@@ -3,11 +3,9 @@ import sys
 from setuptools import setup
 
 install_requires = [
-    "aiobotocore==1.3.1",
+    "aioboto3",
     "aiohttp",
-    "async_timeout",
-    "boto3",
-    "botocore",
+    "async_timeout"
 ]
 
 if sys.version_info < (3, 7):
