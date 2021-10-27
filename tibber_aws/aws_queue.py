@@ -30,7 +30,7 @@ class Queue(AwsBase):
 
     async def subscribe_topic(self, topic_name) -> None:
         session = aiobotocore.get_session()
-        await self._init_client_if_required(session)
+        await self.init_client_if_required(session)
 
         response = await self._client.create_queue(QueueName=self._queue_name)
         self.queue_url = response["QueueUrl"]

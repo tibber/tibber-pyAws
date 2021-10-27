@@ -15,7 +15,7 @@ class Topic(AwsBase):
         )
 
     async def publish(self, subject, message):
-        await self._init_client_if_required()
+        await self.init_client_if_required()
         await self._client.publish(
             TargetArn=self._topic_arn,
             Message=json.dumps({"default": json.dumps(message)}),
