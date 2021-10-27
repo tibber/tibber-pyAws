@@ -19,7 +19,7 @@ class S3Bucket(AwsBase):
         super().__init__("s3", region_name)
 
     async def load_data_metadata(self, key, if_unmodified_since=None):
-        await self._init_client_if_required()
+        await self.init_client_if_required()
         if if_unmodified_since is None:
             if_unmodified_since = datetime.datetime(1900, 1, 1)
         try:
@@ -46,7 +46,7 @@ class S3Bucket(AwsBase):
         return data, state
 
     async def store_data(self, key, data, retry=1):
-        await self._init_client_if_required()
+        await self.init_client_if_required()
 
         if len(key) > 3 and key[-3:] == ".gz":
             compressor = zlib.compressobj(wbits=zlib.MAX_WBITS | 16)
@@ -84,7 +84,7 @@ class S3Bucket(AwsBase):
                     }
                 ]
         """
-        await self._init_client_if_required()
+        await self.init_client_if_required()
 
         paginator = self._client.get_paginator("list_objects_v2")
         objects = []
