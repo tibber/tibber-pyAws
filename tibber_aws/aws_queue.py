@@ -4,7 +4,7 @@ import time
 
 import aiobotocore
 
-from .aws_base import AwsBase
+from .aws_base import AwsBase, get_aiosession
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class Queue(AwsBase):
         super().__init__("sqs", region_name)
 
     async def subscribe_topic(self, topic_name, session=None) -> None:
-        session = session or aiobotocore.get_session()
+        session = session or get_aiosession()
         await self.init_client_if_required(session)
 
         response = await self._client.create_queue(QueueName=self._queue_name)
