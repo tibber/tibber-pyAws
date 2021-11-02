@@ -14,6 +14,7 @@ _LOGGER = logging.getLogger(__name__)
 def get_aiosession():
     return aiobotocore.get_session()
 
+
 class AwsBase:
     def __init__(self, service_name, region_name="eu-west-1") -> None:
         self._client = None
@@ -34,4 +35,3 @@ class AwsBase:
             self._client = await self._context_stack.enter_async_context(
                 session.create_client(self._service_name, region_name=self._region_name)
             )
-        
