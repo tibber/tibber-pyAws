@@ -2,8 +2,6 @@ import json
 import logging
 import time
 
-import aiobotocore
-
 from .aws_base import AwsBase, get_aiosession
 
 _LOGGER = logging.getLogger(__name__)
