@@ -1,15 +1,12 @@
-import sys
-
 from setuptools import setup
 
 install_requires = [
     "aioboto3",
     "aiohttp",
-    "async_timeout"
+    "async_timeout",
+    "async_exit_stack; python_version<'3.7'"
 ]
 
-if sys.version_info < (3, 7):
-    install_requires.append("async_exit_stack")
 
 setup(
     name="tibber_aws",
