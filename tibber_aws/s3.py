@@ -50,7 +50,7 @@ class S3Bucket(AwsBase):
         return data, state
 
     async def delete_file(self, key):
-        await self._init_client_if_required()
+        await self.init_client_if_required()
         await self._client.delete_object(Bucket=self._bucket_name, Key=key)
 
     async def store_data(self, key, data, retry=1):
