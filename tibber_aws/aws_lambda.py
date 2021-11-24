@@ -34,7 +34,7 @@ def log(msg, retry):
 
 
 async def invoke(
-    func_name, payload, aiohttp_session, retries=3, timeout=LAMBDA_TIMEOUT
+    func_name, payload, aiohttp_session: aiohttp.ClientSession, retries=3, timeout=LAMBDA_TIMEOUT
 ):
     """Used to invoke lambda functions async."""
     url = os.path.join(LAMBDA_ENDPOINT_BASE, func_name, "invocations")
@@ -46,7 +46,7 @@ async def invoke(
             with async_timeout.timeout(timeout):
                 try:
                     async with aiohttp_session.post(
-                        url, data=data, headers=signed_headers
+                        url, data=data, headers=signed_headers, timeout=aiohttp.ClientTimeout(total=timeout)
                     ) as response:
                         if response.status != 200:
                             msg = await response.json()
