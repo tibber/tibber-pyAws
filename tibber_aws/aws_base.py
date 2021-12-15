@@ -12,7 +12,11 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def get_aiosession():
-    return aiobotocore.get_session()
+    try:
+        session = aiobotocore.get_session()
+    except AttributeError:
+        session = aiobotocore.session.get_session()
+    return session
 
 
 class AwsBase:
