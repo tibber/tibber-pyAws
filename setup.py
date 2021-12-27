@@ -1,7 +1,7 @@
 from setuptools import setup
 
 install_requires = [
-    "aioboto3",
+    "aioboto3>=9.3.0",
     "aiohttp",
     "async_timeout",
     "async_exit_stack; python_version<'3.7'"
