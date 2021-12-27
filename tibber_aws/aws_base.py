@@ -6,13 +6,13 @@ except ImportError:  # To support python 3.6
 import asyncio
 import logging
 
-import aiobotocore
+from aiobotocore.session import get_session
 
 _LOGGER = logging.getLogger(__name__)
 
 
 def get_aiosession():
-    return aiobotocore.get_session()
+    return get_session()
 
 
 class AwsBase:

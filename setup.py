@@ -1,7 +1,7 @@
 from setuptools import setup
 
 install_requires = [
-    "aioboto3",
+    "aioboto3>=9.3.0",
     "aiohttp",
     "async_timeout",
     "async_exit_stack; python_version<'3.7'"
@@ -14,7 +14,7 @@ setup(
     install_requires=install_requires,
     version="0.9.4",
     description="A python3 library to communicate with Aws",
-    python_requires=">=3.5.3",
+    python_requires=">=3.7.0",
     author="Tibber",
     author_email="drdaniel@tibber.com",
     url="https://github.com/tibbercom/tibber-pyAws",
