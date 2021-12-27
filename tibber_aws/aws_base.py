@@ -1,10 +1,6 @@
-try:
-    from contextlib import AsyncExitStack
-except ImportError:  # To support python 3.6
-    from async_exit_stack import AsyncExitStack
-
 import asyncio
 import logging
+from contextlib import AsyncExitStack
 
 from aiobotocore.session import get_session
 
