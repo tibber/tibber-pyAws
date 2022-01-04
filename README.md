@@ -17,5 +17,5 @@ gh release create 0.8.6 -t 0.8.6
 
 ### Manually
 * Update version in setup.py
-* Create a [Release](https://github.com/tibbercom/tibber-pyAws/releases)
+* Create a [Release](https://github.com/tibber/tibber-pyAws/releases)
   This will push the package to pypi.
