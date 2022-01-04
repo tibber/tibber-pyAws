@@ -16,7 +16,7 @@ setup(
     python_requires=">=3.7.0",
     author="Tibber",
     author_email="drdaniel@tibber.com",
-    url="https://github.com/tibbercom/tibber-pyAws",
+    url="https://github.com/tibber/tibber-pyAws",
     license="MIT",
     classifiers=[
         "Intended Audience :: Developers",
