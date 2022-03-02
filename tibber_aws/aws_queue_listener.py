@@ -96,13 +96,7 @@ class AwsQueueListener:
                     for task in tasks_completed:
                         running_tasks.remove(task)
 
-    async def receive_message(self) -> list:
-        """
-        Receive messages from the queue.
-        max_num_msgs: Maximum number of messages to receive.
-        wait_time_seconds: Wait time in seconds for receiving messages.
-        return: List of messages.
-        """
+    async def receive_message(self) -> list[MessageHandle]:
         response = await self._sqs_client.receive_message(
             QueueUrl=self._queue_url,
             MaxNumberOfMessages=self._max_num_msgs,
