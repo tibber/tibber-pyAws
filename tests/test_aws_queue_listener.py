@@ -6,15 +6,6 @@ from tibber_aws.aws_queue_listener import (MessageHandle, SqsMessage,
                                            json_message_processor)
 
 
-class TestQueue:
-    async def delete_message(self, msg_handle):
-        print("Deleted", msg_handle)
-        pass
-
-
-test_queue = TestQueue()
-
-
 @pytest.mark.asyncio
 async def test_json_message_processor():
     async def test_handler(message: SqsMessage):
