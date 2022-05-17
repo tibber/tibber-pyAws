@@ -18,6 +18,19 @@ class S3Bucket(AwsBase):
         self._bucket_name = bucket_name
         super().__init__("s3", **kwargs)
 
+    async def load_metadata(self, key):
+        await self.init_client_if_required()
+        try:
+            meta = await self._client.head_object(
+                Bucket=self._bucket_name,
+                Key=key,
+            )
+            return meta, STATE_OK
+        except botocore.exceptions.ClientError as exp:
+            if "Not Found" in str(exp):
+                return None, STATE_NOT_EXISTING
+            raise
+
     async def load_data_metadata(self, key, if_unmodified_since=None):
         await self.init_client_if_required()
         if if_unmodified_since is None:
