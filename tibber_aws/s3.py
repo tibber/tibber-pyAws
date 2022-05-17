@@ -14,9 +14,9 @@ STATE_PRECONDITION_FAILED = "precondition_failed"
 
 
 class S3Bucket(AwsBase):
-    def __init__(self, bucket_name, **kwargs):
+    def __init__(self, bucket_name, region_name="eu-west-1", **kwargs):
         self._bucket_name = bucket_name
-        super().__init__("s3", **kwargs)
+        super().__init__("s3", region_name, **kwargs)
 
     async def load_metadata(self, key):
         await self.init_client_if_required()
