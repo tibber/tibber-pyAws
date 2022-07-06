@@ -1,8 +1,9 @@
+"""Sqs listener."""
 import asyncio
 import json
 import logging
-import time
 from dataclasses import dataclass
+from typing import Awaitable, Callable, Optional
 
 from aiobotocore.session import get_session
 
@@ -11,83 +12,121 @@ _LOGGER = logging.getLogger(__name__)
 
 @dataclass
 class SqsMessage:
+    """Sqs message."""
+
     type: str
     message_id: str
     topic_arn: str
     subject: str
-    message: str
+    message: dict
     timestamp: str
     signature_version: str
     signature: str
     signing_cert_url: str
     unsubscribe_url: str
 
-    @staticmethod
-    def from_json(msg):
-        return SqsMessage(
-            type=msg.get("Type"),
-            message_id=msg.get("MessageId"),
-            topic_arn=msg.get("TopicArn"),
-            subject=msg.get("Subject"),
-            message=msg.get("Message"),
-            timestamp=msg.get("Timestamp"),
-            signature_version=msg.get("SignatureVersion"),
-            signature=msg.get("Signature"),
-            signing_cert_url=msg.get("SigningCertURL"),
-            unsubscribe_url=msg.get("UnsubscribeURL"),
-        )
 
-
+@dataclass
 class MessageHandle:
-    def __init__(self, msg):
-        self._msg = msg
+    """Message handle"""
 
-    @property
-    def body(self):
-        return self._msg["Body"]
-
-    @property
-    def receipt_handle(self):
-        return self._msg["ReceiptHandle"]
+    message_id: str
+    body: dict
+    receipt_handle: str
+    receive_count: int
 
 
-async def json_message_processor(msg_handle, handlers: dict):
-    message = SqsMessage.from_json(json.loads(msg_handle.body))
-    await handlers[message.subject](message)
+@dataclass
+class SqsListenerOptions:
+    """Sqs listener options."""
+
+    max_num_msgs: int = 1
+    wait_time_seconds: int = 2
+    max_retry_count: int = 3
+    region_name: str = "eu-west-1"
+
+    def __post_init__(self):
+        # Aws supports fetching of max 10 messages at once
+        if self.max_num_msgs < 1 or self.max_num_msgs > 10:
+            raise ValueError("max_num_msgs must be between 1 and 10")
 
 
-class AwsQueueListener:
+class SqsListener:
+    """SqsListener."""
+
     def __init__(
         self,
-        sqs_client,
         queue_url: str,
-        handlers: dict,
-        max_num_msgs=1,
-        wait_time_seconds=2,
+        message_handler: Callable[[SqsMessage], Awaitable],
+        options: Optional[SqsListenerOptions] = None,
     ):
-        self._sqs_client = sqs_client
         self._queue_url = queue_url
-        self._handlers = handlers
-        self._max_num_msgs = max_num_msgs
-        self._wait_time_seconds = wait_time_seconds
+        self._message_handler = message_handler
+        self._options = options or SqsListenerOptions()
+        self._session = get_session()
 
     async def run(self):
-        async def process_message(msg_handle):
-            try:
-                await json_message_processor(msg_handle, self._handlers)
-                await self.delete_message(msg_handle)
-            except Exception as e:
-                _LOGGER.exception(e)
+        """run sqs listener."""
 
-        while True:
-            msg_handles = await self.receive_message()
-            if msg_handles:
-                running_tasks = []
-                for msg_handle in msg_handles:
-                    if msg_handle is None:
-                        continue
+        async def process_message(sqs_client, msg_handle: MessageHandle):
+            if msg_handle.receive_count > self._options.max_retry_count:
+                # TODO: Change to warning?
+                _LOGGER.error(
+                    "ReceiptHandle:\n%s\nbody:\n%s\nhas received %s times, will be deleted",
+                    msg_handle.receipt_handle,
+                    msg_handle.body,
+                    msg_handle.receive_count,
+                )
+                await sqs_client.delete_message(
+                    QueueUrl=self._queue_url,
+                    ReceiptHandle=msg_handle.receipt_handle,
+                )
+                return
+            try:
+                body = msg_handle.body
+                if await self._message_handler(
+                    SqsMessage(
+                        type=body["Type"],
+                        message_id=body["MessageId"],
+                        topic_arn=body["TopicArn"],
+                        subject=body["Subject"],
+                        message=json.loads(body["Message"]),
+                        timestamp=body["Timestamp"],
+                        signature_version=body["SignatureVersion"],
+                        signature=body["Signature"],
+                        signing_cert_url=body["SigningCertURL"],
+                        unsubscribe_url=body["UnsubscribeURL"],
+                    )
+                ):
+                    await sqs_client.delete_message(
+                        QueueUrl=self._queue_url,
+                        ReceiptHandle=msg_handle.receipt_handle,
+                    )
+            except Exception:  # pylint: disable=broad-except
+                _LOGGER.error("Error in process_message", exc_info=True)
+
+        running_tasks = []
+
+        async with self._session.create_client(
+            "sqs", region_name=self._options.region_name
+        ) as sqs:
+            while True:
+                num_msgs = self._options.max_num_msgs - len(running_tasks)
+                response = await sqs.receive_message(
+                    QueueUrl=self._queue_url,
+                    MaxNumberOfMessages=num_msgs,
+                    WaitTimeSeconds=self._options.wait_time_seconds,
+                    AttributeNames=["ApproximateReceiveCount"],
+                )
+                for msg in response.get("Messages", []):
+                    msg_handle = MessageHandle(
+                        message_id=msg.get("MessageId"),
+                        body=json.loads(msg["Body"]),
+                        receipt_handle=msg["ReceiptHandle"],
+                        receive_count=int(msg["Attributes"]["ApproximateReceiveCount"]),
+                    )
                     running_tasks.append(
-                        asyncio.ensure_future(process_message(msg_handle))
+                        asyncio.ensure_future(process_message(sqs, msg_handle))
                     )
 
                 if running_tasks:
@@ -96,72 +135,3 @@ class AwsQueueListener:
                     )
                     for task in tasks_completed:
                         running_tasks.remove(task)
-
-    async def receive_message(self) -> list[MessageHandle]:
-        response = await self._sqs_client.receive_message(
-            QueueUrl=self._queue_url,
-            MaxNumberOfMessages=self._max_num_msgs,
-            WaitTimeSeconds=self._wait_time_seconds,
-        )
-        return [MessageHandle(msg) for msg in response.get("Messages", [])]
-
-    async def delete_message(self, msg_handle: MessageHandle) -> None:
-        await self._sqs_client.delete_message(
-            QueueUrl=self._queue_url, ReceiptHandle=msg_handle.receipt_handle
-        )
-
-
-async def create_queue_with_subscription(
-    queue_name, topic_name, region_name="eu-west-1"
-):
-    session = get_session()
-    async with session.create_client("sqs", region_name) as sqs:
-        async with session.create_client("sns", region_name) as sns:
-            response = await sqs.create_queue(QueueName=queue_name)
-            queue_url = response["QueueUrl"]
-            attr_response = await sqs.get_queue_attributes(
-                QueueUrl=queue_url, AttributeNames=["All"]
-            )
-
-            queue_attributes = attr_response.get("Attributes")
-            queue_arn = queue_attributes.get("QueueArn")
-
-            if "Policy" in queue_attributes:
-                policy = json.loads(queue_attributes["Policy"])
-            else:
-                policy = {
-                    "Version": "2012-10-17",
-                    "Statement": [
-                        {
-                            "Sid": "Sid" + str(int(time.time())),
-                            "Effect": "Allow",
-                            "Principal": {"AWS": "*"},
-                            "Action": ["sqs:SendMessage", "sqs:ReceiveMessage"],
-                        }
-                    ],
-                }
-
-            statement = policy.get("Statement", [{}])[0]
-            statement["Resource"] = statement.get("Resource", queue_arn)
-            statement["Condition"] = statement.get("Condition", {})
-            statement["Condition"]["StringLike"] = statement["Condition"].get(
-                "StringLike", {}
-            )
-            source_arn = statement["Condition"]["StringLike"].get("aws:SourceArn", [])
-            if not isinstance(source_arn, list):
-                source_arn = [source_arn]
-
-            response = await sns.create_topic(Name=topic_name)
-            topic_arn = response["TopicArn"]
-
-            if topic_arn not in source_arn:
-                source_arn.append(topic_arn)
-                statement["Condition"]["StringLike"]["aws:SourceArn"] = source_arn
-                policy["Statement"] = statement
-                await sqs.set_queue_attributes(
-                    QueueUrl=queue_url, Attributes={"Policy": json.dumps(policy)}
-                )
-
-            await sns.subscribe(TopicArn=topic_arn, Protocol="sqs", Endpoint=queue_arn)
-
-    return queue_url
