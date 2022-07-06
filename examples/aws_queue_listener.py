@@ -1,8 +1,6 @@
 import asyncio
 from typing import Awaitable, Callable
 
-from aiobotocore.session import get_session
-
 from tibber_aws.aws_queue_listener import SqsListener, SqsMessage
 
 
