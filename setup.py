@@ -6,6 +6,7 @@ install_requires = [
     "botocore",
     "aiohttp",
     "async_timeout",
+    "types-aiobotocore-sqs"
 ]
 
 
@@ -13,7 +14,7 @@ setup(
     name="tibber_aws",
     packages=["tibber_aws"],
     install_requires=install_requires,
-    version="0.12.0",
+    version="0.13.0",
     description="A python3 library to communicate with Aws",
     python_requires=">=3.7.0",
     author="Tibber",
