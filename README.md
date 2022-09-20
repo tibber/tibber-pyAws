@@ -15,6 +15,12 @@ Example
 gh release create 0.8.6 -t 0.8.6
 ```
 
+## Usage
+
+### SQS
+Examples:
+* [aws_queue_listener](examples/aws_queue_listener.py)
+
 ### Manually
 * Update version in setup.py
 * Create a [Release](https://github.com/tibber/tibber-pyAws/releases)
