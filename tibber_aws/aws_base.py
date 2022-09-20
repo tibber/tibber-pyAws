@@ -2,13 +2,13 @@ import asyncio
 import logging
 from contextlib import AsyncExitStack
 
-from aiobotocore.session import get_session
+from aiobotocore.session import get_session, AioSession
 from aiobotocore.config import AioConfig
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def get_aiosession():
+def get_aiosession() -> AioSession:
     return get_session()
 
 
