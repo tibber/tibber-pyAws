@@ -10,7 +10,7 @@ import time
 
 from .aws_base import AwsBase, get_aiosession, AioSession
 from types_aiobotocore_sqs.client import SQSClient
-from types_aiobotocore_sqs.type_defs import SendMessageResultTypeDef
+from types_aiobotocore_sqs.type_defs import SendMessageResultTypeDef, ReceiveMessageResultTypeDef
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -18,6 +18,10 @@ _LOGGER = logging.getLogger(__name__)
 class MessageHandle:
     def __init__(self, msg):
         self._msg = msg
+
+    @property
+    def message_id(self):
+        return self._msg["MessageId"]
 
     @property
     def body(self):
@@ -105,7 +109,9 @@ class Queue(AwsBase):
         if self.queue_url is None:
             _LOGGER.error("No subscribed queue")
             return [None]
-        response = await self._client.receive_message(QueueUrl=self.queue_url, MaxNumberOfMessages=num_msgs)
+        response: ReceiveMessageResultTypeDef = await self._client.receive_message(
+            QueueUrl=self.queue_url, MaxNumberOfMessages=num_msgs
+        )
         res = []
         for msg in response.get("Messages", []):
             res.append(MessageHandle(msg))
@@ -123,15 +129,15 @@ class Queue(AwsBase):
         """Publish a message to the queue.
 
         Example of returned metadata dict:
-        {'MD5OfMessageBody': '83956d1d4f05f535d55c9895ff593550',
+            {'MD5OfMessageBody': '83956d1d4f05f535d55c9895ff593550',
             'MessageId': 'd9654e21-f92b-4d27-bcb5-b27e1dc18839',
             'ResponseMetadata': {'HTTPHeaders': {'content-length': '378',
                                                 'content-type': 'text/xml',
-                                      'date': 'Tue, 20 Sep 2022 07:00:38 GMT',
-                                      'x-amzn-requestid': '7202509e-f09f-5082-8aea-0b3d97c92220'},
-                      'HTTPStatusCode': 200,
-                      'RequestId': '7202509e-f09f-5082-8aea-0b3d97c92220',
-                      'RetryAttempts': 0}}
+                                    'date': 'Tue, 20 Sep 2022 07:00:38 GMT',
+                                    'x-amzn-requestid': '7202509e-f09f-5082-8aea-0b3d97c92220'},
+                    'HTTPStatusCode': 200,
+                    'RequestId': '7202509e-f09f-5082-8aea-0b3d97c92220',
+                    'RetryAttempts': 0}}
 
         :param message: Message to publish, must be serializable to JSON
         :type message: dict
