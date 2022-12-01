@@ -135,7 +135,7 @@ class VersionedS3Bucket(S3Bucket):
         super().__init__(bucket_name, region_name, **kwargs)
 
     async def create(self):
-        bucket = await super().create()
+        await super().create()
         await self._client.put_bucket_versioning(
             Bucket=self._bucket_name, VersioningConfiguration={"Status": "Enabled"}
         )
