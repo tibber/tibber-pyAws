@@ -83,11 +83,18 @@ class S3Bucket(AwsBase):
         except self._client.exceptions.NoSuchBucket:
             if retry <= 0:
                 raise
+            await self.create()
+            return await self.store_data(key, data, retry - 1)
+
+    async def create(self):
+        await self.init_client_if_required()
+        try:
             await self._client.create_bucket(
                 Bucket=self._bucket_name,
                 CreateBucketConfiguration={"LocationConstraint": self._region_name},
             )
-            return await self.store_data(key, data, retry - 1)
+        except self._client.exceptions.BucketAlreadyOwnedByYou:
+            _LOGGER.warning("Bucket %s already exists", self._bucket_name)
 
     async def list_keys(self, prefix=""):
         """Lists ALL objects of the bucket in the given prefix.
@@ -117,3 +124,32 @@ class S3Bucket(AwsBase):
         except self._client.exceptions.NoSuchBucket:
             return []
         return objects
+
+
+class VersionedS3Bucket(S3Bucket):
+    def __init__(
+        self, bucket_name, expiration_days, prefix, region_name="eu-west-1", **kwargs
+    ):
+        self._expiration_days = expiration_days
+        self._prefix = prefix
+        super().__init__(bucket_name, region_name, **kwargs)
+
+    async def create(self):
+        bucket = await super().create()
+        await self._client.put_bucket_versioning(
+            Bucket=self._bucket_name, VersioningConfiguration={"Status": "Enabled"}
+        )
+        await self._client.put_bucket_lifecycle_configuration(
+            Bucket=self._bucket_name,
+            LifecycleConfiguration={
+                "Rules": [
+                    {
+                        "Status": "Enabled",
+                        "Prefix": self._prefix,
+                        "NoncurrentVersionExpiration": {
+                            "NoncurrentDays": self._expiration_days
+                        },
+                    }
+                ]
+            },
+        )
