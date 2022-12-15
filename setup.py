@@ -1,19 +1,16 @@
 from setuptools import setup
 
-install_requires = [
-    "aiobotocore",
-    "boto3",
-    "botocore",
-    "aiohttp",
-    "async_timeout",
-    "types-aiobotocore-sqs"
-]
-
+requirements = []
+with open("requirements.txt") as f:
+    for line in f.read().splitlines():
+        if line.startswith("#"):
+            continue
+        requirements.append(line)
 
 setup(
     name="tibber_aws",
     packages=["tibber_aws"],
-    install_requires=install_requires,
+    install_requires=requirements,
     version="0.15.0",
     description="A python3 library to communicate with Aws",
     python_requires=">=3.7.0",

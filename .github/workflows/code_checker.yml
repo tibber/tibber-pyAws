@@ -27,14 +27,14 @@ jobs:
           key: ${{ hashFiles('requirements.txt') }}
       - name: Install depencency
         run: |
-            pip install -r requirements.txt
-            pip install dlint flake8 flake8-bandit flake8-bugbear flake8-deprecated flake8-executable isort pylint
+          pip install -r requirements.txt
+          pip install dlint flake8 flake8-bandit flake8-bugbear flake8-deprecated flake8-executable isort pylint
       - name: Flake8 Code Linter
         run: |
-            flake8 tibber_aws/ --max-line-length=120 
+          flake8 tibber_aws/ --max-line-length=120
       - name: isort
         run: |
-            isort **/*.py
+          isort **/*.py
       - name: Pylint Code Linter
         run: |
-            pylint --disable=C,R  --enable=unidiomatic-typecheck  tibber_aws
+          pylint --disable=C,R  --enable=unidiomatic-typecheck  tibber_aws
