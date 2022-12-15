@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime as dt
 import json
 from .aws_base import AwsBase
+from typing import Dict, List
 from types_aiobotocore_logs.client import CloudWatchLogsClient
 
 logger = logging.getLogger("aws_logs")
@@ -63,10 +64,10 @@ class Logs(AwsBase):
         log_group: str,
         start_time: dt,
         end_time: dt,
-        extra_filter: dict[str, str] = None,
+        extra_filter: Dict[str, str] = None,
         max_recursion: int = 10,
         **kwargs
-    ) -> list[CloudWatchLogEvent]:
+    ) -> List[CloudWatchLogEvent]:
         """Retrieve log messages for a specific log event in a log group with potential extra filters
 
         Example:
