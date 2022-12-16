@@ -31,9 +31,6 @@ class Logs(AwsBase):
     def __init__(self, region_name="eu-west-1") -> None:
         super().__init__("logs", region_name)
 
-    async def close(self):
-        await self._client.close()
-
     async def _get_log_events_raw(
         self, event: str, log_group: str, start_time: dt, end_time: dt, extra_filter: dict = None, **kwargs
     ) -> dict:
