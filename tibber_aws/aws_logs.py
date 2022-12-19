@@ -27,7 +27,7 @@ class CloudWatchLogEvent:
     @property
     def jsonmsg(self) -> Optional[dict]:
         """Get message as parsed JSON if possible. Otherwise None"""
-        if getattr(self, "_jsonmsg") is None:
+        if self._jsonmsg is None:
             try:
                 self._jsonmsg = json.loads(self.message)
             except ValueError:
