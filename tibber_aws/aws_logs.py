@@ -22,11 +22,12 @@ class CloudWatchLogEvent:
     def __post_init__(self):
         self.timestamp_dt = datetime.datetime.fromtimestamp(self.timestamp / 1000, tz=UTC)
         self.ingestionTime_dt = datetime.datetime.fromtimestamp(self.ingestionTime / 1000, tz=UTC)
+        self._jsonmsg = None
 
     @property
     def jsonmsg(self) -> Optional[dict]:
         """Get message as parsed JSON if possible. Otherwise None"""
-        if not hasattr(self, "_jsonmsg"):
+        if getattr(self, "_jsonmsg") is None:
             try:
                 self._jsonmsg = json.loads(self.message)
             except ValueError:
@@ -122,8 +123,14 @@ class Logs(AwsBase):
         :return: typed dict with a list of events and some metadata
         :rtype: GetLogEventsResponseTypeDef
         """
-        kwargs = locals().copy()  # CBA entering every param again.
-        del kwargs["self"]
+        kwargs = dict(
+            logGroupName=logGroupName,
+            logStreamName=logStreamName,
+            startTime=startTime,
+            endTime=endTime,
+            nextToken=nextToken,
+            limit=limit,
+            startFromHead=startFromHead)
         used_kwargs = {  # Drop None kwargs to use the built in defaults
             name: param
             for name, param in kwargs.items()
@@ -195,8 +202,17 @@ class Logs(AwsBase):
                 eventId (string) -- The ID of the event.
         :rtype: FilterLogEventsResponseTypeDef
         """
-        kwargs = locals().copy()  # CBA entering every param again.
-        del kwargs["self"]
+        kwargs = dict(
+            logGroupName=logGroupName,
+            logGroupIdentifier=logGroupIdentifier,
+            logStreamNames=logStreamNames,
+            logStreamNamePrefix=logStreamNamePrefix,
+            startTime=startTime,
+            endTime=endTime,
+            filterPattern=filterPattern,
+            nextToken=nextToken,
+            limit=limit,
+            unmask=unmask)
         used_kwargs = {  # Drop None kwargs to use the built in defaults
             name: param
             for name, param in kwargs.items()
@@ -354,5 +370,5 @@ if __name__ == "__main__":
     handler.setFormatter(formatter)
     logging.basicConfig(level=logging.getLevelName("DEBUG"), handlers=[handler])
 
-    all_events = asyncio.run(main())
-    print(all_events[0])
+    all_struct_events = asyncio.run(main())
+    print(all_struct_events[0])
