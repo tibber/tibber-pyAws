@@ -3,9 +3,12 @@ from dataclasses import dataclass
 import datetime
 import json
 from tibber_aws.aws_base import AwsBase
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, AsyncIterator
 from types_aiobotocore_logs.client import (
-    CloudWatchLogsClient, FilterLogEventsResponseTypeDef, GetLogEventsResponseTypeDef)
+    CloudWatchLogsClient,
+    FilterLogEventsResponseTypeDef,
+    GetLogEventsResponseTypeDef,
+)
 
 logger = logging.getLogger("aws_logs")
 UTC = datetime.timezone.utc
@@ -14,6 +17,7 @@ UTC = datetime.timezone.utc
 @dataclass
 class CloudWatchLogEvent:
     """An AWS CloudWatch base log event (a log line)"""
+
     timestamp: int
     message: str
     ingestionTime: int
@@ -37,6 +41,7 @@ class CloudWatchLogEvent:
 @dataclass
 class CloudWatchFilteredLogEvent(CloudWatchLogEvent):
     """An AWS CloudWatch log event as a result from a filtering query."""
+
     logStreamName: str
     eventId: str
 
@@ -77,6 +82,7 @@ class Logs(AwsBase):
     ```
 
     """
+
     _client: CloudWatchLogsClient
 
     def __init__(self, region_name="eu-west-1") -> None:
@@ -90,7 +96,7 @@ class Logs(AwsBase):
         endTime: int = None,
         nextToken: str = None,
         limit: int = None,
-        startFromHead: bool = None
+        startFromHead: bool = None,
     ) -> GetLogEventsResponseTypeDef:
         """Lists log events from the specified log group. Exposing native method.
 
@@ -129,26 +135,26 @@ class Logs(AwsBase):
             endTime=endTime,
             nextToken=nextToken,
             limit=limit,
-            startFromHead=startFromHead)
+            startFromHead=startFromHead,
+        )
         used_kwargs = {  # Drop None kwargs to use the built in defaults
-            name: param
-            for name, param in kwargs.items()
-            if param is not None
+            name: param for name, param in kwargs.items() if param is not None
         }
         return await self._client.get_log_events(**used_kwargs)
 
     async def filter_log_events(
-            self,
-            logGroupName: str,
-            logGroupIdentifier: str = None,
-            logStreamNames: List[str] = None,
-            logStreamNamePrefix: str = None,
-            startTime: int = None,
-            endTime: int = None,
-            filterPattern: str = None,
-            nextToken: str = None,
-            limit: int = None,
-            unmask: bool = None) -> FilterLogEventsResponseTypeDef:
+        self,
+        logGroupName: str,
+        logGroupIdentifier: str = None,
+        logStreamNames: List[str] = None,
+        logStreamNamePrefix: str = None,
+        startTime: int = None,
+        endTime: int = None,
+        filterPattern: str = None,
+        nextToken: str = None,
+        limit: int = None,
+        unmask: bool = None,
+    ) -> FilterLogEventsResponseTypeDef:
         """Filter log events for a specific log-group. Exposing native method.
 
         Convert the returned events with:
@@ -211,11 +217,10 @@ class Logs(AwsBase):
             filterPattern=filterPattern,
             nextToken=nextToken,
             limit=limit,
-            unmask=unmask)
+            unmask=unmask,
+        )
         used_kwargs = {  # Drop None kwargs to use the built in defaults
-            name: param
-            for name, param in kwargs.items()
-            if param is not None
+            name: param for name, param in kwargs.items() if param is not None
         }
         return await self._client.filter_log_events(**used_kwargs)
 
@@ -226,7 +231,7 @@ class Logs(AwsBase):
         start_time: datetime.datetime,
         end_time: datetime.datetime,
         extra_filter: Dict[str, Union[str, float, int]] = None,
-        **kwargs
+        **kwargs,
     ) -> FilterLogEventsResponseTypeDef:
         """Make a call to `CloudWatchLogsClient.filter_log_events` with optional filtering assuming the logs
         are structlog formats and have the property `event`.
@@ -244,11 +249,15 @@ class Logs(AwsBase):
             startTime=int(start_time.timestamp() * 1000),
             filterPattern=pattern,
             endTime=int(end_time.timestamp() * 1000),
-            **kwargs
+            **kwargs,
         )
         logger.info(
             "Found %s log events searching for pattern=%s in log_group=%s, with responseMetadata=%s",
-            len(log_events["events"]), pattern, log_group, log_events.get("responseMetadata"))
+            len(log_events["events"]),
+            pattern,
+            log_group,
+            log_events.get("responseMetadata"),
+        )
         return log_events
 
     async def get_structlog_events(
@@ -259,14 +268,14 @@ class Logs(AwsBase):
         end_time: datetime.datetime,
         extra_filter: Dict[str, str] = None,
         max_recursion: int = 10,
-        **kwargs
+        **kwargs,
     ) -> List[CloudWatchFilteredLogEvent]:
         """Retrieve log messages for a specific log event in a log group with potential extra filters
 
         Example:
         .. code-block:: python
             param_filter = {"body.price_area": "NL", "body.vehicle_type": "easee charger"}
-            log_events = await log_client.get_log_events(
+            log_events = await log_client.get_structlog_events(
                 event="Request",
                 log_group="prod-hem-api",
                 start_time=datetime.datetime(2022,12,7),
@@ -315,36 +324,122 @@ class Logs(AwsBase):
 
         return events
 
+    async def get_structlog_event_generator(
+        self,
+        event: str,
+        log_group: str,
+        start_time: datetime.datetime,
+        end_time: datetime.datetime,
+        extra_filter: Dict[str, str] = None,
+        max_recursion: int = 10,
+        **kwargs,
+    ) -> AsyncIterator[CloudWatchFilteredLogEvent]:
+        """Retrieve log messages for a specific log event in a log group with potential extra filters as
+        an async generator
+
+        Example:
+        .. code-block:: python
+            param_filter = {"body.price_area": "NL", "body.vehicle_type": "easee charger"}
+            async for r in log_client.get_structlog_event_generator(
+                    event="Request",
+                    log_group="prod-hem-api",
+                    start_time=datetime.datetime(2022,12,7),
+                    end_time=datetime.datetime(2022,12,15),
+                    extra_filter=param_filter):
+                print(r)
+
+        :param event: name of the event to search for
+        :type event: str
+        :param log_group: name of the log group to search in
+        :type log_group: str
+        :param start_time: start of interval for events
+        :type start_time: datetime.datetime
+        :param end_time: end of interval for events
+        :type end_time: datetime.datetime
+        :param extra_filter: name of property mapped to the value it should match. All have to be met (&&).
+        :type extra_filter: dict
+        :param max_recursion: Limit how many fetches to make when the stream was not depleated. This happens
+        when not all records fit in `limit`, defaults to 10000 or the size limit of 1MB.
+        :type max_recursion: int
+        :return: The events from `log_group` response matching the filter.
+        :rtype: list[CloudWatchLogEvent]
+        """
+        log_events = await self._filter_structlog_events(event, log_group, start_time, end_time, extra_filter, **kwargs)
+
+        for e in log_events.get("events", []):
+            yield CloudWatchFilteredLogEvent(**e)
+
+        next_token = log_events.get("nextToken")
+        i = 1
+        while next_token is not None:
+            logger.info("More logs to fetch... Using nextToken, %s/%s", i, max_recursion)
+            log_events = await self._filter_structlog_events(
+                event=event,
+                log_group=log_group,
+                start_time=start_time,
+                end_time=end_time,
+                extra_filter=extra_filter,
+                **kwargs,
+            )
+            for e in log_events.get("events", []):
+                yield CloudWatchFilteredLogEvent(**e)
+
+            next_token = log_events.get("nextToken")
+            if i >= max_recursion and next_token is not None:
+                logger.warning(
+                    "Hit max recursion: %s, more to be fetched. Increase `max_recursion` to get everything.",
+                    max_recursion,
+                )
+                break
+            i += 1
+
 
 async def main():
     log_client = Logs()
     await log_client.init_client_if_required()
     param_filter = {"body.price_area": "NL", "body.vehicle_type": "easee charger"}
+
     structlog_events = await log_client.get_structlog_events(
         event="Request",
         log_group="prod-hem-api",
         start_time=datetime.datetime(2022, 12, 10),
         end_time=datetime.datetime(2022, 12, 15),
         extra_filter=param_filter,
-        max_recursion=1)
+    )
+
     raw_filtered_events = await log_client.filter_log_events(
         logGroupName="prod-hem-api",
         filterPattern='{ $.event = "Request" && $.body.price_area = "NL" && $.body.vehicle_type = "easee charger" }',
         startTime=int(datetime.datetime(2022, 12, 10).timestamp() * 1000),
         endTime=int(datetime.datetime(2022, 12, 15).timestamp() * 1000),
-        limit=10_000,)
+        limit=10_000,
+    )
     raw_all_events = await log_client.get_log_events(
         logGroupName="prod-hem-api",
         logStreamName="380/tibber_hem_api/0419e686df8846d38b61cb6e0ac99763",
         startTime=int(datetime.datetime(2022, 12, 10).timestamp() * 1000),
         endTime=int(datetime.datetime(2022, 12, 15).timestamp() * 1000),
-        limit=10_000,)
+        limit=10_000,
+    )
     raw_trading_fundamentals_events = await log_client.get_log_events(
         logGroupName="prod-trading-fundamental-data",
         logStreamName="prod/tibber_trading_fundamental_data/9076218fbfbb4599bb9ed66d822e37d7",
         startTime=int(datetime.datetime(2022, 12, 10).timestamp() * 1000),
         endTime=int(datetime.datetime(2022, 12, 15).timestamp() * 1000),
-        limit=10_000,)
+        limit=10_000,
+    )
+    param_filter = {"body.price_area": "NL", "body.vehicle_type": "easee charger"}
+
+    generator_events = []
+    async for r in log_client.get_structlog_event_generator(
+        event="Request",
+        log_group="prod-hem-api",
+        start_time=datetime.datetime(2022, 12, 7),
+        end_time=datetime.datetime(2022, 12, 15),
+        extra_filter=param_filter,
+    ):
+        logger.debug("Received event from generator: %s", r)
+        generator_events.append(r)
 
     all_events = [CloudWatchLogEvent(**e) for e in raw_all_events["events"]]
     filtered_events = [CloudWatchFilteredLogEvent(**e) for e in raw_filtered_events["events"]]
@@ -354,6 +449,7 @@ async def main():
     logger.info("All events event json: %s", all_events[0].jsonmsg)
     logger.info("structlog event json: %s", structlog_events[0].jsonmsg)
     logger.info("fundamental event json: %s", all_fundamental_events[0].jsonmsg)
+    logger.info("generator event json: %s", generator_events[0].jsonmsg)
 
     await log_client.close()
     logger.critical("Complete")
