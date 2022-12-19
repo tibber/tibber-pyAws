@@ -6,4 +6,4 @@ from .aws_metadata import get_instance_id
 from .s3 import STATE_NOT_EXISTING, STATE_OK, STATE_PRECONDITION_FAILED, S3Bucket, VersionedS3Bucket
 from .secret_manager import get_secret, get_secret_parser
 from .sns import Topic
-from .aws_logs import Logs, CloudWatchLogEvent
+from .aws_logs import Logs, CloudWatchLogEvent, CloudWatchFilteredLogEvent
