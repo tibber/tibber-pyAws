@@ -8,6 +8,8 @@ mypy = "*"
 flake8 = "*"
 autopep8 = "*"
 pylint = "*"
+black = "*"
+ipykernel = "*"
 
 [requires]
 python_version = "3.10"
