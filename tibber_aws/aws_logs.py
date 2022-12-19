@@ -1,7 +1,6 @@
 import logging
 from dataclasses import dataclass
 import datetime
-import zoneinfo
 import json
 from tibber_aws.aws_base import AwsBase
 from typing import Dict, List, Optional, Union
@@ -9,7 +8,7 @@ from types_aiobotocore_logs.client import (
     CloudWatchLogsClient, FilterLogEventsResponseTypeDef, GetLogEventsResponseTypeDef)
 
 logger = logging.getLogger("aws_logs")
-UTC = zoneinfo.ZoneInfo("UTC")
+UTC = datetime.timezone.utc
 
 
 @dataclass
