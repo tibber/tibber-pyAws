@@ -260,70 +260,6 @@ class Logs(AwsBase):
         )
         return log_events
 
-    async def get_structlog_events(
-        self,
-        event: str,
-        log_group: str,
-        start_time: datetime.datetime,
-        end_time: datetime.datetime,
-        extra_filter: Dict[str, str] = None,
-        max_recursion: int = 10,
-        **kwargs,
-    ) -> List[CloudWatchFilteredLogEvent]:
-        """Retrieve log messages for a specific log event in a log group with potential extra filters
-
-        Example:
-        .. code-block:: python
-            param_filter = {"body.price_area": "NL", "body.vehicle_type": "easee charger"}
-            log_events = await log_client.get_structlog_events(
-                event="Request",
-                log_group="prod-hem-api",
-                start_time=datetime.datetime(2022,12,7),
-                end_time=datetime.datetime(2022,12,15),
-                extra_filter=param_filter)
-
-        :param event: name of the event to search for
-        :type event: str
-        :param log_group: name of the log group to search in
-        :type log_group: str
-        :param start_time: start of interval for events
-        :type start_time: datetime.datetime
-        :param end_time: end of interval for events
-        :type end_time: datetime.datetime
-        :param extra_filter: name of property mapped to the value it should match. All have to be met (&&).
-        :type extra_filter: dict
-        :param max_recursion: Limit how many fetches to make when the stream was not depleated. This happens
-        when not all records fit in `limit`, defaults to 10000 or the size limit of 1MB.
-        :type max_recursion: int
-        :return: The events from `log_group` response matching the filter.
-        :rtype: list[CloudWatchLogEvent]
-        """
-        log_events = await self._filter_structlog_events(event, log_group, start_time, end_time, extra_filter, **kwargs)
-        events = [CloudWatchFilteredLogEvent(**e) for e in log_events.get("events", [])]
-        next_token = log_events.get("nextToken")
-        i = 1
-        while next_token is not None:
-            logger.info("More logs to fetch... Using nextToken, %s/%s", i, max_recursion)
-            log_events = await self._filter_structlog_events(
-                event=event,
-                log_group=log_group,
-                start_time=start_time,
-                end_time=end_time,
-                extra_filter=extra_filter,
-                **kwargs,
-            )
-            events += [CloudWatchFilteredLogEvent(**e) for e in log_events.get("events", [])]
-            next_token = log_events.get("nextToken")
-            if i >= max_recursion and next_token is not None:
-                logger.warning(
-                    "Hit max recursion: %s, more to be fetched. Increase `max_recursion` to get everything.",
-                    max_recursion,
-                )
-                break
-            i += 1
-
-        return events
-
     async def get_structlog_event_generator(
         self,
         event: str,
@@ -379,6 +315,7 @@ class Logs(AwsBase):
                 start_time=start_time,
                 end_time=end_time,
                 extra_filter=extra_filter,
+                nextToken=next_token,
                 **kwargs,
             )
             for e in log_events.get("events", []):
@@ -393,6 +330,54 @@ class Logs(AwsBase):
                 break
             i += 1
 
+    async def get_structlog_events(
+        self,
+        event: str,
+        log_group: str,
+        start_time: datetime.datetime,
+        end_time: datetime.datetime,
+        extra_filter: Dict[str, str] = None,
+        max_recursion: int = 10,
+        **kwargs,
+    ) -> List[CloudWatchFilteredLogEvent]:
+        """Retrieve log messages for a specific log event in a log group with potential extra filters
+
+        Example:
+        .. code-block:: python
+            param_filter = {"body.price_area": "NL", "body.vehicle_type": "easee charger"}
+            log_events = await log_client.get_structlog_events(
+                event="Request",
+                log_group="prod-hem-api",
+                start_time=datetime.datetime(2022,12,7),
+                end_time=datetime.datetime(2022,12,15),
+                extra_filter=param_filter)
+
+        :param event: name of the event to search for
+        :type event: str
+        :param log_group: name of the log group to search in
+        :type log_group: str
+        :param start_time: start of interval for events
+        :type start_time: datetime.datetime
+        :param end_time: end of interval for events
+        :type end_time: datetime.datetime
+        :param extra_filter: name of property mapped to the value it should match. All have to be met (&&).
+        :type extra_filter: dict
+        :param max_recursion: Limit how many fetches to make when the stream was not depleated. This happens
+        when not all records fit in `limit`, defaults to 10000 or the size limit of 1MB.
+        :type max_recursion: int
+        :return: The events from `log_group` response matching the filter.
+        :rtype: list[CloudWatchLogEvent]
+        """
+        return [event
+                async for event in self.get_structlog_event_generator(
+                    event=event,
+                    log_group=log_group,
+                    start_time=start_time,
+                    end_time=end_time,
+                    extra_filter=extra_filter,
+                    max_recursion=max_recursion,
+                    **kwargs)]
+
 
 async def main():
     log_client = Logs()
@@ -402,8 +387,8 @@ async def main():
     structlog_events = await log_client.get_structlog_events(
         event="Request",
         log_group="prod-hem-api",
-        start_time=datetime.datetime(2022, 12, 10),
-        end_time=datetime.datetime(2022, 12, 15),
+        start_time=datetime.datetime(2022, 12, 15),
+        end_time=datetime.datetime(2022, 12, 15, 2),
         extra_filter=param_filter,
     )
 
@@ -464,6 +449,8 @@ if __name__ == "__main__":
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - [%(filename)s:%(lineno)d] %(message)s")
     handler.setFormatter(formatter)
     logging.basicConfig(level=logging.getLevelName("DEBUG"), handlers=[handler])
+    logging.getLogger("botocore").setLevel(logging.INFO)
+    logging.getLogger("aiobotocore").setLevel(logging.INFO)
 
     all_struct_events = asyncio.run(main())
     print(all_struct_events[0])
