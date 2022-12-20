@@ -11,7 +11,7 @@ setup(
     name="tibber_aws",
     packages=["tibber_aws"],
     install_requires=requirements,
-    version="0.16.2",
+    version="0.16.3",
     description="A python3 library to communicate with Aws",
     python_requires=">=3.7.0",
     author="Tibber",
