@@ -4,8 +4,9 @@ metadata:
   name: tibber-pyAws
   annotations:
     github.com/project-slug: tibber/tibber-pyAws
+    circleci.com/project-slug: gh/tibber/pyAws
   tags:
-    - python
+  - python
 spec:
   type: library
   lifecycle: production
