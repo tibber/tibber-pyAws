@@ -4,7 +4,7 @@ metadata:
   name: tibber-pyAws
   annotations:
     github.com/project-slug: tibber/tibber-pyAws
-    circleci.com/project-slug: gh/tibber/pyAws
+    circleci.com/project-slug: gh/tibber/tibber-pyAws
   tags:
   - python
 spec:
